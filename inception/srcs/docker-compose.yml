@@ -1,0 +1,84 @@
+services:
+  nginx:
+    container_name: nginx
+    image: nginx:1
+    build: ./requirements/nginx/
+    ports:
+      - '443:443'
+    volumes:
+      - wordpress:/var/www/html
+    env_file:
+      - .env
+    depends_on:
+      - wordpress
+    networks:
+      - wordpress-network
+    restart: always
+
+  wordpress:
+    container_name: wordpress
+    image: wordpress:1
+    build: ./requirements/wordpress/
+    ports:
+      - '9000:9000'
+    volumes:
+      - wordpress:/var/www/html
+    env_file:
+      - .env
+    depends_on:
+      - mariadb
+    networks:
+      - wordpress-network
+    restart: always
+
+    
+  mariadb:
+    container_name: mariadb
+    image: mariadb:1
+    build: ./requirements/mariadb/
+    ports:
+      - '3306:3306'
+    volumes:
+      - mariadb:/var/lib/mysql
+    env_file:
+      - .env
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "--silent"]
+      interval: 5s
+      retries: 5
+    networks:
+      - wordpress-network
+    restart: always
+
+  phpmyadmin:
+    container_name: phpmyadmin
+    image: phpmyadmin:latest
+    environment:
+      PMA_HOST: mariadb       # Nom du service MariaDB
+      PMA_PORT: 3306
+    ports:
+      - "8080:80"             # phpMyAdmin accessible sur le port 8080 de l'hôte
+    depends_on:
+      - mariadb
+    networks:
+      - wordpress-network
+    restart: always
+
+volumes:
+  mariadb:
+    name: mariadb
+    driver: local
+    driver_opts:
+      type : none
+      device: /home/ubuntu/data/mariadb
+      o : bind
+  wordpress:
+    name: wordpress
+    driver: local
+    driver_opts:
+      type : none
+      device: /home/ubuntu/data/wordpress
+      o : bind
+networks:
+  wordpress-network:
+    driver: bridge
